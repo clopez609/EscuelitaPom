@@ -14,18 +14,21 @@ namespace ExampleApi.Controllers
     public class NumberListController : ControllerBase
     {
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> Get()
         {
             Random rnd = new Random();
             List<int> values = new List<int>();
 
-            while (values.Count <= 10)
+            await Task.Run(() =>
             {
-                int randomNumber = rnd.Next(1, 10);
+                while (values.Count <= 10)
+                {
+                    int randomNumber = rnd.Next(1, 10);
 
-                values.Add(randomNumber);
-            }
-
+                    values.Add(randomNumber);
+                }
+            });
+           
             return Ok(values);
         }
     }

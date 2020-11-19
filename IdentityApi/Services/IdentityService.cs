@@ -1,4 +1,6 @@
 ﻿using IdentityApi.Models;
+using IdentityApi.ViewModels;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
@@ -10,22 +12,28 @@ using System.Threading.Tasks;
 
 namespace IdentityApi.Services
 {
-    public class IdentityService
+    public class IdentityService : IIdentityService
     {
         private static readonly string secretKey = "SecretKeywqewqeqqqqqqqqqqqweeeeeeeeeeeeeeeeeeeqweqe";
-        private readonly TokenProviderOptions _tokenProviderOptions;
+        private readonly IConfiguration _configuration;
 
-        public IdentityService()
+        public IdentityService(IConfiguration configuration)
         {
+            _configuration = configuration;
         }
 
-        public Claim[] GetIdentity(string username, string password)
+        public Claim[] GetIdentity(InputBodyViewModel model)
         {
-            if (username == "admin" && password == "admin123")
+            //string username = "admin";
+            //string password = "admin123";
+            //if (username == "admin" && password == "admin123")
+
+            string body = string.Join(",", model.Method, model.Channel, model.Path);
+
+            if(!string.IsNullOrEmpty(body))
             {
                 return new Claim[] {
-                        new Claim(ClaimTypes.Name, username),
-                        new Claim(ClaimTypes.Role, "Admin"),
+                        new Claim("input-body", body)
                 };
             }
             return null;
@@ -42,11 +50,11 @@ namespace IdentityApi.Services
 
                 //Paylod
                 var payload = new JwtPayload(
-                    _tokenProviderOptions.Issuer,
-                    _tokenProviderOptions.Audience,
+                    _configuration["Issuer"],
+                    _configuration["Audience"],
                     claim,
                     DateTime.UtcNow,
-                    DateTime.UtcNow.AddMinutes(5)
+                    DateTime.UtcNow.AddMinutes(1)
                 );
 
                 //Token
@@ -57,7 +65,7 @@ namespace IdentityApi.Services
                 var response = new TokenResponse()
                 {
                     AccessToken = encodedJwt,
-                    ExpiresIn = (int)_tokenProviderOptions.Expiration.TotalSeconds
+                    ExpiresIn = (int)TimeSpan.FromMinutes(1).TotalSeconds
                 };
 
                 return response;

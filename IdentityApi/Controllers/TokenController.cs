@@ -13,24 +13,26 @@ namespace IdentityApi.Controllers
     [Route("api/[controller]")]
     public class TokenController : ControllerBase
     {
-        public TokenController()
+        private readonly IdentityService _identityService;
+
+        public TokenController(IdentityService identityService)
         {
+            _identityService = identityService;
         }
 
-        [HttpGet]
-        public IActionResult Get(IdentityViewModel model)
+        [HttpPost]
+        public IActionResult Post(InputBodyViewModel model)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest();
             }
 
-            var service = new IdentityService();
-            var userClaims = service.GetIdentity(model.Username, model.Password);
+            var userClaims = _identityService.GetIdentity(model);
 
             if (userClaims == null) return BadRequest();
 
-            var token = service.GenerateToken(userClaims);
+            var token = _identityService.GenerateToken(userClaims);
 
             return Ok(token);
         }

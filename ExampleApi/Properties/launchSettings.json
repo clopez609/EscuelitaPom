@@ -21,7 +21,9 @@
       "commandName": "Project",
       "launchUrl": "api/functionality",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Issuer": "https://localhost:7001/",
+        "Audience": "https://localhost:44349/"
       },
       "applicationUrl": "https://localhost:5001;http://localhost:5000"
     }

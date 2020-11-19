@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using ExampleApi.Models;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
@@ -17,64 +19,81 @@ using System.Threading.Tasks;
 
 namespace ExampleApi.Middlewares
 {
-    public class TokenProviderOptions
-    {
-        public string Path { get; set; } = "/api/token";
-        public string Issuer { get; set; } = "https://localhost:44349/";
-        public string Audience { get; set; } = "https://localhost:44349/";
-        public TimeSpan Expiration { get; set; } = TimeSpan.FromMinutes(5);
-    }
-
     // You may need to install the Microsoft.AspNetCore.Http.Abstractions package into your project
     public class MiddlewareJWTAuth
     {
         private readonly RequestDelegate _next;
-        private readonly TokenProviderOptions _options;
+        private readonly IConfiguration _configuration;
         private static readonly string secretKey = "SecretKeywqewqeqqqqqqqqqqqweeeeeeeeeeeeeeeeeeeqweqe";
-        public MiddlewareJWTAuth(RequestDelegate next, IOptions<TokenProviderOptions> options)
+
+        public MiddlewareJWTAuth(RequestDelegate next, IConfiguration configuration)
         {
             _next = next;
-            _options = options.Value;
+            _configuration = configuration;
         }
 
         public async Task Invoke(HttpContext httpContext)
         {
-            // Si la ruta de la solicitud no coincide, omita
-            if (!httpContext.Request.Path.Equals(_options.Path, StringComparison.Ordinal))
+            // Si la ruta de la solicitud coincide, genere token por middleware
+            if (httpContext.Request.Path.Equals(TokenProviderOption.Path, StringComparison.Ordinal))
             {
-                await _next.Invoke(httpContext);
+                await GenerateToken(httpContext);
             }
 
-            // La solicitud debe ser POST con Content-Type: application/x-www-form-urlencoded
-            if (httpContext.Request.Method.Equals("POST"))
+            if (!TryRetrieveToken(httpContext, out string token))
             {
-                httpContext.Response.StatusCode = 400;
-                await httpContext.Response.WriteAsync("Bad request.");
+                //httpContext.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                throw new Exception("No autorizado");
             }
 
-            await GenerateToken(httpContext);
+            await _next.Invoke(httpContext);
         }
 
-        //Recupera el token de la petición
-        // Validacion
-        //if (!TryRetrieveToken(httpContext, out string token))
-        //{
-        //    httpContext.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
-        //    return Invoke(httpContext);
-        //
-        //private bool TryRetrieveToken(HttpContext httpContext, out string token)
-        //{
-        //    token = null;
-        //    StringValues authzHeaders;
-        //    if (!httpContext.Request.Headers.TryGetValue("Authorization", out authzHeaders) || authzHeaders.Count() > 1)
-        //    {
-        //        return false;
-        //    }
-        //    var bearerToken = authzHeaders.ElementAt(0);
-        //    token = bearerToken.StartsWith("Bearer ") ?
-        //            bearerToken.Substring(7) : bearerToken;
-        //    return true;
-        //}
+        private bool TryRetrieveToken(HttpContext httpContext, out string token)
+        {
+            token = null;
+            StringValues authzHeaders;
+
+            if (!httpContext.Request.Headers.TryGetValue("Authorization", out authzHeaders) || authzHeaders.Count() > 1)
+            {
+                return false;
+            }
+
+            var bearerToken = authzHeaders.ElementAt(0);
+            token = bearerToken.StartsWith("Bearer ") ?
+                    bearerToken.Substring(7) : bearerToken;
+
+            var handler = new JwtSecurityTokenHandler();
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                // Validar la firma del emisor
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+
+                // Validar el emisor JWT (iss)
+                ValidateIssuer = false,
+                ValidIssuer = "https://localhost:7001/",
+
+                // Validar la audiencia JWT (aud)
+                ValidateAudience = false,
+                //ValidAudience = "https://localhost:44349/",
+
+                // Validar la caducidad del token
+                ValidateLifetime = true,
+            };
+
+            try
+            {
+                SecurityToken validatedToken;
+                handler.ValidateToken(token, tokenValidationParameters, out validatedToken);
+            }
+            catch(Exception e)
+            {
+                throw new Exception(e.Message);
+            }
+
+            return true;
+        }
 
         private async Task GenerateToken(HttpContext httpContext)
         {
@@ -85,7 +104,7 @@ namespace ExampleApi.Middlewares
             if (identity == null)
             {
                 httpContext.Response.StatusCode = 400;
-                await httpContext.Response.WriteAsync("Usuario o contraseña invalido.");
+                await httpContext.Response.WriteAsync("Usuario o Contraseña invalido.");
                 return;
             }
 
@@ -98,8 +117,8 @@ namespace ExampleApi.Middlewares
 
                 //Paylod
                 var payload = new JwtPayload(
-                    _options.Issuer,
-                    _options.Audience,
+                    _configuration["Issuer"],
+                    _configuration["Audience"],
                     identity,
                     DateTime.UtcNow,
                     DateTime.UtcNow.AddMinutes(5)
@@ -110,15 +129,15 @@ namespace ExampleApi.Middlewares
 
                 var encodedJwt = new JwtSecurityTokenHandler().WriteToken(jwt);
 
-                var response = new
-                {
-                    access_token = encodedJwt,
-                    expires_in = (int)_options.Expiration.TotalSeconds
-                };
-
-                // Serialize and return the response
                 httpContext.Response.ContentType = "application/json";
-                await httpContext.Response.WriteAsync(JsonConvert.SerializeObject(response, new JsonSerializerSettings { Formatting = Formatting.Indented }));
+                httpContext.Response.StatusCode = (int)HttpStatusCode.OK;
+                await httpContext.Response.WriteAsync(JsonConvert.SerializeObject(new TokenResponse()
+                {
+                    AccessToken = encodedJwt,
+                    ExpiresIn = (int)TimeSpan.FromMinutes(5).TotalSeconds
+                }));
+
+                return;
             }
             catch (Exception ex)
             {
@@ -127,7 +146,6 @@ namespace ExampleApi.Middlewares
         }
         private Claim[] GetIdentity(string username, string password)
         {
-            // DON'T do this in production, obviously!
             if (username == "admin" && password == "admin123")
             {
                 return new Claim[] {
@@ -135,8 +153,6 @@ namespace ExampleApi.Middlewares
                         new Claim(ClaimTypes.Role, "Admin"),
                 };
             }
-
-            // Credentials are invalid, or account doesn't exist
             return null;
         }
     }

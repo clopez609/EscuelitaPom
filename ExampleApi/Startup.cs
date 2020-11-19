@@ -41,11 +41,11 @@ namespace ExampleApi
 
                 // Validar el emisor JWT (iss)
                 ValidateIssuer = true,
-                ValidIssuer = "https://localhost:44349/",
+                ValidIssuer = "https://localhost:7001/",
 
-                // Validar la audiciencia JWT (aud)
-                ValidateAudience = true,
-                ValidAudience = "https://localhost:44349/",
+                // Validar la audiencia JWT (aud)
+                ValidateAudience = false,
+                //ValidAudience = "https://localhost:44349/",
 
                 // Validar la caducidad del token
                 ValidateLifetime = true,
@@ -73,7 +73,9 @@ namespace ExampleApi
 
             // Middlewares
 
-            app.UseMiddlewareBasicAuth();
+            app.UseMiddlewareHandleErrors();
+
+            //app.UseMiddlewareBasicAuth();
 
             app.UseMiddlewareJWTAuth();
 
@@ -81,7 +83,6 @@ namespace ExampleApi
 
             app.UseMiddlewareAvailability();
 
-            app.UseMiddlewareHandleErrors();
 
 
             app.UseHttpsRedirection();
