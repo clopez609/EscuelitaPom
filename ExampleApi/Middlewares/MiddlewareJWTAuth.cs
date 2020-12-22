@@ -34,11 +34,11 @@ namespace ExampleApi.Middlewares
 
         public async Task Invoke(HttpContext httpContext)
         {
-            // Si la ruta de la solicitud coincide, genere token por middleware
-            if (httpContext.Request.Path.Equals(TokenProviderOption.Path, StringComparison.Ordinal))
-            {
-                await GenerateToken(httpContext);
-            }
+            //// Si la ruta de la solicitud coincide, genere token por middleware
+            //if (httpContext.Request.Path.Equals(TokenProviderOption.Path, StringComparison.Ordinal))
+            //{
+            //    await GenerateToken(httpContext);
+            //}
 
             if (!TryRetrieveToken(httpContext, out string token))
             {

@@ -11,7 +11,6 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace FunctionalityApi.Controllers
 {
-    //[Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class FunctionalityController : ControllerBase

@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using ExampleApi.Models;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using System;
 using System.Net;
@@ -8,37 +10,36 @@ using System.Threading.Tasks;
 
 namespace ExampleApi.Middlewares
 {
-    // You may need to install the Microsoft.AspNetCore.Http.Abstractions package into your project
-    public class GlobalErrorDetails
-    {
-        public int StatusCode { get; set; }
-        public string Message { get; set; }
-    };
-
     public class MiddlewareHandleErrors
     {
         private readonly RequestDelegate _next;
-        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger<MiddlewareHandleErrors> _logger;
 
-        public MiddlewareHandleErrors(RequestDelegate next, ILoggerFactory loggerFactory)
+        public MiddlewareHandleErrors(RequestDelegate next, ILogger<MiddlewareHandleErrors> logger)
         {
             _next = next;
-            _loggerFactory = loggerFactory;
+            _logger = logger;
         }
 
         public async Task Invoke(HttpContext httpContext)
         {
-            var _logger = _loggerFactory.CreateLogger<MiddlewareHandleErrors>();
-
             try
             {
+                _logger.LogInformation("Begin Errors Handler Middleware");
                 await _next.Invoke(httpContext);
             }
-            catch (Exception ex)
+            catch (SecurityTokenExpiredException)
             {
-                _logger.LogError($"Something went wrong: {ex.Message}");
-                await HandleGlobalExceptionAsync(httpContext);
+                throw new SecurityTokenExpiredException();
             }
+            catch (SecurityTokenInvalidIssuerException)
+            {
+                throw new SecurityTokenInvalidIssuerException();
+            }
+            catch (Exception)
+            {
+                await HandleGlobalExceptionAsync(httpContext);
+            };
         }
 
         private static Task HandleGlobalExceptionAsync(HttpContext context)
@@ -51,23 +52,6 @@ namespace ExampleApi.Middlewares
                 Message = "Something went wrong !Internal Server Error"
             }));
         }
-
-        //private static HttpStatusCode GetErrorCode(Exception e)
-        //{
-        //    switch (e)
-        //    {
-        //        case ValidationException _:
-        //            return HttpStatusCode.BadRequest;
-        //        case FormatException _:
-        //            return HttpStatusCode.BadRequest;
-        //        case AuthenticationException _:
-        //            return HttpStatusCode.Forbidden;
-        //        case NotImplementedException _:
-        //            return HttpStatusCode.NotImplemented;
-        //        default:
-        //            return HttpStatusCode.InternalServerError;
-        //    }
-        //}
     }
 
     // Extension method used to add the middleware to the HTTP request pipeline.

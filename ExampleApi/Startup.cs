@@ -1,21 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using ExampleApi.Middlewares;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System;
+using System.Text;
 
 namespace ExampleApi
 {
@@ -51,16 +45,58 @@ namespace ExampleApi
                 ValidateLifetime = true,
             };
 
-            services.AddAuthentication(opt => {
+            services.AddAuthentication(opt =>
+            {
                 opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            }).AddJwtBearer(options => {
+            }).AddJwtBearer(options =>
+            {
                 options.TokenValidationParameters = tokenValidationParameters;
             });
 
             services.AddControllers();
 
             services.AddMemoryCache();
+
+            services.AddSwaggerGen(opt =>
+            {
+                var groupName = "v1";
+
+                opt.SwaggerDoc(groupName, new OpenApiInfo
+                {
+                    Title = $"Example Api {groupName}",
+                    Version = groupName,
+                    Description = "Example API",
+                    Contact = new OpenApiContact
+                    {
+                        Name = "Example Api Company",
+                        Email = string.Empty,
+                        Url = new Uri("https://localhost:5001"),
+                    }
+                });
+                opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Name = "Bearer",
+                    BearerFormat = "JWT",
+                    Scheme = "bearer",
+                    Description = "Por favor, inserte JTW",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.Http
+                });
+                opt.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    { new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Id = "Bearer",
+                                Type = ReferenceType.SecurityScheme
+                            }
+                        },
+                        new string[] { }
+                    }
+                });
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -71,21 +107,25 @@ namespace ExampleApi
                 app.UseDeveloperExceptionPage();
             }
 
-            // Middlewares
+            #region Middlewares
 
             app.UseMiddlewareHandleErrors();
 
-            //app.UseMiddlewareBasicAuth();
-
-            app.UseMiddlewareJWTAuth();
+            app.UseMiddlewareSecurityAuth();
 
             app.UseMiddlewareFunctionality();
 
             app.UseMiddlewareAvailability();
 
-
+            #endregion
 
             app.UseHttpsRedirection();
+
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Example Api V1");
+            });
 
             app.UseRouting();
 

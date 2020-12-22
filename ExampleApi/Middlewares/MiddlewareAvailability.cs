@@ -45,20 +45,6 @@ namespace ExampleApi.Middlewares
                 {
                     throw new Exception($"Horario de Disponibilidad: {item.FromHour} a {item.ToHour}");
                 }
-                //foreach (var item in values)
-                //{
-                //    if (dayName.StartsWith(item.Weekday, StringComparison.OrdinalIgnoreCase))
-                //    {
-                //        if (DateTime.Now >= Convert.ToDateTime(item.FromHour) && DateTime.Now <= Convert.ToDateTime(item.ToHour))
-                //        {
-                //            await _next.Invoke(httpContext);
-                //        }
-                //        else
-                //        {
-                //            throw new Exception($"Horario de Disponibilidad: {item.FromHour} a {item.ToHour}");
-                //        }
-                //    }
-                //}
             }
         }
     }

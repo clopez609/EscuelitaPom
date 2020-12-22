@@ -13,9 +13,9 @@ namespace IdentityApi.Controllers
     [Route("api/[controller]")]
     public class TokenController : ControllerBase
     {
-        private readonly IdentityService _identityService;
+        private readonly IIdentityService _identityService;
 
-        public TokenController(IdentityService identityService)
+        public TokenController(IIdentityService identityService)
         {
             _identityService = identityService;
         }

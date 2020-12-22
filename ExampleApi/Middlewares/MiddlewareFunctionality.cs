@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -15,6 +16,7 @@ namespace ExampleApi.Middlewares
     public class MiddlewareFunctionality
     {
         private readonly RequestDelegate _next;
+        private readonly ILogger<MiddlewareFunctionality> _logger;
         private readonly HttpClient _httpClient;
         private readonly SemaphoreSlim _semaphoreSlim;
         private readonly IMemoryCache _cache;
@@ -22,12 +24,13 @@ namespace ExampleApi.Middlewares
         private const string cacheKeyWithoutExpiration = "_valuesWithoutExpiration";
         private const string availability = "_avalaibility";
 
-        public MiddlewareFunctionality(RequestDelegate next, IMemoryCache cache)
+        public MiddlewareFunctionality(RequestDelegate next, IMemoryCache cache, ILogger<MiddlewareFunctionality> logger)
         {
             _next = next;
             _httpClient = new HttpClient();
             _semaphoreSlim = new SemaphoreSlim(1);
             _cache = cache;
+            _logger = logger;
         }
 
         public async Task Invoke(HttpContext httpContext)
@@ -36,6 +39,7 @@ namespace ExampleApi.Middlewares
             var channel = httpContext.Request.Headers["Channel"];
             var method = httpContext.Request.Method;
 
+            _logger.LogInformation("Begin Functionality Middleware");
 
             if (method == "GET" && !string.IsNullOrWhiteSpace(channel) && httpContext.Request.Path.Equals("/api/functionality/1", StringComparison.Ordinal))
             {
@@ -44,9 +48,6 @@ namespace ExampleApi.Middlewares
                 {
                     if (!_cache.TryGetValue(cacheKey, out FunctionalityDetail value))
                     {
-                        //_httpClient.DefaultRequestHeaders.Authorization = 
-                        //    new AuthenticationHeaderValue("Basic", Convert.ToBase64String(
-                        //    System.Text.Encoding.ASCII.GetBytes($"admin:admin123")));
                         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
                         var response = await _httpClient.GetAsync($"https://localhost:6001{path}");

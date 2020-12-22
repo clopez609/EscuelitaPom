@@ -29,7 +29,7 @@ namespace IdentityApi
         {
             services.AddControllers();
 
-            services.AddTransient<IdentityService>();
+            services.AddTransient<IIdentityService, IdentityService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
